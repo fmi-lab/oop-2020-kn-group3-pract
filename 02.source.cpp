@@ -69,6 +69,8 @@ struct Window
 	}
 };
 
+int count_alloc = 0;
+
 struct DynamicArray
 {
 	Circle* circles;
@@ -83,8 +85,8 @@ struct DynamicArray
 	 */
 	DynamicArray(unsigned n)
 	{
-		array = new Circle[n];
-		cout << "Dynamic array allocated #" << (countt++) << endl;
+		circles = new Circle[n];
+		cout << "Dynamic array allocated #" << (count_alloc++) << endl;
 	}
 
 	/*
@@ -95,7 +97,7 @@ struct DynamicArray
 	 */
 	~DynamicArray()
 	{
-		delete[] array;
+		delete[] circles;
 		cout << "~DynamicArray(): memory cleared." << endl;
 	}
 };
@@ -103,8 +105,8 @@ struct DynamicArray
 int main()
 {
 	Point p{5, 10};
-	Rectangle r{3, 4, p};
-	Circle c{6, p}; // We can also nest curly braces: {6, {5,10}}
+	Rectangle r{p, 3, 4};
+	Circle c{p, 6}; // We can also nest curly braces: {6, {5,10}}
 
 	// Method calls! Note the special syntax.
 	p.print(); // The `this` inside the print() function equals `&p`.

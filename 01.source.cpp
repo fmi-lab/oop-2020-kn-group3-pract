@@ -75,8 +75,8 @@ int main()
 {
 	// Curly braces give initial values to structs.
 	Point p{5, 10};
-	Rectangle r{3, 4, p};
-	Circle c{6, p}; //{6,{5,10}}
+	Rectangle r{p, 3, 4};
+	Circle c{p, 6}; // We can also nest curly braces: {6, {5,10}}
 
 	// Method calls! Note the special syntax.
 	p.print(); // The `this` inside the print() function equals `&p`.

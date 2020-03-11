@@ -69,7 +69,7 @@ struct Window
 	}
 };
 
-int countt = 0;
+int count_alloc = 0;
 
 // NOTE: A TEMPLATE!
 // Lets us generate structs based on a given type (one or more) which we choose
@@ -90,7 +90,7 @@ template <typename T> struct DynamicArray
 	DynamicArray(unsigned n)
 	{
 		array = new T[n];
-		cout << "Dynamic array allocated #" << (countt++) << endl;
+		cout << "Dynamic array allocated #" << (count_alloc++) << endl;
 	}
 
 	/*
