@@ -29,3 +29,9 @@
         - Защо ползваме `private:` с get/set методи за достъп, вместо директно самите данни с `public:`?
     - Задачата за [матрицата](./04.sources/README.md)
     - Проблемът с double delete [] - откъде идва, как се решава? (Copy c-tor, operator=())
+    - Ръчно дефиниране на `operator[](int n)`, за да правим `myArray[5]` върху собствени обекти.
+
+5. 30.III. **To be filled**
+    - Вижте [тук](./not-named-yet/README.md)
+    - ??header files, translation units
+    - unions?
