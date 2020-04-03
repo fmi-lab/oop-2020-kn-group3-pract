@@ -32,5 +32,7 @@
     - Ръчно дефиниране на `operator[](int n)`, за да правим `myArray[5]` върху собствени обекти.
 
 5. 31.III. **Headers & source files, forward declarations**
-    - [Код](./not-named-yet)
-	- `union`
+    - Проблемът, който решават forward декларациите
+    - Как разделяме кода по файлове
+    - [Код](./05.sources)
+	- Какво е `union`
