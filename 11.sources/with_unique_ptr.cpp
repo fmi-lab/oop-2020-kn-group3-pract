@@ -1,7 +1,9 @@
 #include <cmath>
 #include <iostream>
+#include <string>
 
 const float E = 2.7f;
+const float eps = 0.001f;
 
 struct Set
 {
@@ -14,9 +16,9 @@ template<typename T>
 struct UniquePointer {
 	T* ptr;
 
-	UniquePointer(T const& other) : ptr(new T(other)) {}
+	UniquePointer(T const& other) : ptr(other.clone()) {}
 
-	UniquePointer(UniquePointer const& other) : ptr(new T(other.ptr)) {}
+	UniquePointer(UniquePointer const& other) : ptr(other.ptr->clone()) {}
 
 	virtual ~UniquePointer() {
 		delete ptr;
@@ -25,9 +27,11 @@ struct UniquePointer {
 
 struct Intersect : Set
 {
+private:
 	// owner of a b
-	UniquePointer<Set> a, b;
+	const UniquePointer<Set> a, b;
 
+public:
 	Intersect(Set const& a, Set const& b) : a( a ), b(b) {}
 
 	bool check(float x) const override { return a.ptr->check(x) && b.ptr->check(x); }
@@ -51,8 +55,35 @@ struct Positives : Set
 	Positives* clone() const override { return new Positives(); }
 };
 
-// @TODO Define the sets of positive, nonnegative numbers and sets of intervals
-// of the form (a, b)
+struct NonNegatives : Set
+{
+	bool check(float x) const override { return x >= 0; }
+
+	NonNegatives* clone() const override { return new NonNegatives(); }
+};
+
+struct Interval : Set
+{
+private:
+	const float a, b;
+
+public:
+	Interval(const float a, const float b) : a(a), b(b) {}
+
+	bool check(float x) const override { return a < x && b > x; }
+
+	Interval* clone() const override { return new Interval(*this); }
+};
+
+struct TanDomain : Set
+{
+	bool check(float x) const override
+	{
+		return fmod(x - M_PI / 2, M_PI) > eps || fmod(x - M_PI / 2, M_PI) < -eps;
+	}
+
+	TanDomain* clone() const override { return new TanDomain(); }
+};
 
 class RealFunc
 {
@@ -89,24 +120,44 @@ public:
 	virtual ~RealFunc() {};
 };
 
+struct ComposeSet : Set
+{
+private:
+	const UniquePointer<RealFunc> a, b;
+
+public:
+	ComposeSet(UniquePointer<RealFunc> a, UniquePointer<RealFunc> b) : a(a), b(b) {}
+
+	bool check(float x) const override { return a.ptr->getDomain().check(b.ptr->safeEval(x)); }
+
+	ComposeSet* clone() const override { return new ComposeSet(*this); }
+};
+
 struct Exponent : RealFunc
 {
+private:
+	virtual float evalAt(float x) override { return std::pow(E, x); }
+
+public:
 	Exponent() : RealFunc{AllReals{}, "exp"} {}
 
 	virtual RealFunc* clone() const override { return new Exponent(*this); }
-	virtual float evalAt(float x) override { return std::pow(E, x); }
 };
 
 struct Log : RealFunc
 {
+private:
+	float evalAt(float x) override { return std::log(x); }
+
+public:
 	Log() : RealFunc{Positives{}, "log"} {}
 
 	virtual RealFunc* clone() const override { return new Log(*this); }
-	float evalAt(float x) override { return std::log(x); }
 };
 
 struct BoyanFunction : RealFunc
 {
+private:
 	int n;
 	int* myBigArr = new int[100]; // Illustration of the need of virtual d-tors
 
@@ -117,47 +168,68 @@ struct BoyanFunction : RealFunc
 		return x;
 	}
 
+public:
 	// Unless virtual, will not be called when delete-ing through a RealFunc ptr
 	virtual ~BoyanFunction() override { delete[] myBigArr; }
 };
 
 struct Compose : RealFunc
 {
-	UniquePointer<RealFunc> f, g;
+private:
+	const UniquePointer<RealFunc> f, g;
+	
+	float evalAt(float x) override { return f.ptr->safeEval(g.ptr->safeEval(x)); }
 
-	Compose(UniquePointer<RealFunc> f, UniquePointer<RealFunc> g)
-	    : RealFunc{g.ptr->getDomain(), "Compose"}, f(f), g(g)
+public:
+    Compose(UniquePointer<RealFunc> f, UniquePointer<RealFunc> g)
+	    : RealFunc{ComposeSet{f, g}, "Compose"}, f(f), g(g)
 	{
 	}
 
 	virtual RealFunc* clone() const override { return new Compose(*this); }
-
-	float evalAt(float x) override { return f.ptr->safeEval(g.ptr->safeEval(x)); }
 };
 
 struct Sin : RealFunc
 {
+private:
+	float evalAt(float x) override { return std::sin(x); }
+
+public:
 	Sin() : RealFunc{AllReals{}, "sin"} {}
 
 	virtual RealFunc* clone() const override { return new Sin(*this); }
-	float evalAt(float x) override { return std::sin(x); }
 };
 
-// @TODO Define `struct Tan` and carefully construct its domain Set.
+struct Tan : RealFunc
+{
+private:
+	float evalAt(float x) override { return std::tan(x); }
 
-// @TODO Define `struct Pow` which raises `x` to a power, specified as a
-// constructor argument.
+public:
+	Tan() : RealFunc{TanDomain{}, "tan"} {}
 
-// @TODO Define `struct Sum` which represents the sum of all functions in a
-// given array.
+	virtual RealFunc* clone() const override { return new Tan(*this); }
+};
 
-// @TODO Define global operators `*`, `+`, and `>>` which respectively act as
-// multiplication, addition and composition of functions.
+struct Pow : RealFunc
+{
+private:
+	const float exp;
+	
+	float evalAt(float x) override { return std::pow(x, exp); }
+
+public:
+	Pow(const float exp) : RealFunc{Positives{}, "pow"}, exp(exp) {}
+
+	virtual RealFunc* clone() const override { return new Pow(*this); }
+};
 
 struct Sum : public RealFunc
 {
 private:
-	UniquePointer<RealFunc> f, g;
+	const UniquePointer<RealFunc> f, g;
+
+	float evalAt(float x) override { return f.ptr->safeEval(x) + g.ptr->safeEval(x); }
 
 public:
 	Sum(UniquePointer<RealFunc> f, UniquePointer<RealFunc>  g)
@@ -169,14 +241,38 @@ public:
 
 	Sum(Sum const&) = default;
 
-	float evalAt(float x) override { return f.ptr->safeEval(x) + g.ptr->safeEval(x); }
-
 	virtual RealFunc* clone() const override { return new Sum(*this); }
 
 	~Sum() {}
 };
 
+struct Product : public RealFunc
+{
+private:
+	const UniquePointer<RealFunc> f, g;
+
+	float evalAt(float x) override { return f.ptr->safeEval(x) * g.ptr->safeEval(x); }
+
+public:
+	Product(UniquePointer<RealFunc> f, UniquePointer<RealFunc> g)
+	    : RealFunc{Intersect{{f.ptr->getDomain()}, {g.ptr->getDomain()}},
+	               "Sum"},
+	      f(f), g(g)
+	{
+	}
+
+	Product(Product const&) = default;
+
+	virtual RealFunc* clone() const override { return new Product(*this); }
+
+	~Product() {}
+};
+
+Product operator*(RealFunc& a, RealFunc& b) { return {a, b}; }
+
 Sum operator+(RealFunc& a, RealFunc& b) { return {a, b}; }
+
+Compose operator>>(RealFunc& a, RealFunc& b) { return {a, b}; }
 
 Sum complexFunction()
 {
@@ -193,11 +289,18 @@ int main()
 	Sum sum = complexFunction();
 
 	Exponent exp;
-	Compose comp{&exp, &sum};
+	Compose comp{exp, sum};
 
 	RealFunc* base = &comp;
 	std::cout << " dsadsa " << std::endl;
 	std::cout << base->safeEval(3) << std::endl;
 
-	Intersect str{&sum.getDomain(), &base->getDomain()};
+	Intersect str{sum.getDomain(), base->getDomain()};
+
+	// problem with Compose's defined domain - example
+	Log log;
+	Sin sin;
+	Compose comp2{log, sin};
+	base = &comp2;
+	std::cout << base->safeEval(3 * M_PI / 2) << std::endl;
 }
